@@ -13,4 +13,4 @@
 
 - [x] 3.1 Unit tests for a unique creator match, several matches, and no namespace evidence
 - [x] 3.2 Integration test that an ambiguous mod resolves when its creator matches a namespace sibling, and stays ambiguous otherwise
-- [ ] 3.3 Confirm on the production list that Dust Bunnies resolves to 3480725900 without any manual curation
+- [x] 3.3 Confirm on the production list that Dust Bunnies resolves to 3480725900 without any manual curation

@@ -22,5 +22,5 @@
 
 - [x] 5.1 Unit tests for unique, version-tied, and ambiguous title matches
 - [x] 5.2 Unit tests for import merge behaviour
-- [ ] 5.3 Browser check that `crows.dustbunny` resolves on the production list
+- [x] 5\.3 Browser check that `crows.dustbunny` resolves on the production list
 - [x] 5.4 Document curated mappings as an escape hatch

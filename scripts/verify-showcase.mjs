@@ -67,11 +67,15 @@ const seeded = await fetch(`${baseUrl}/__admin/import-index`, {
   }),
 }).then((response) => response.ok, () => false);
 
+// Only the local dev server honours a supplied client IP; Cloudflare rejects the
+// managed header on the public edge, so production requests must omit it.
+const local = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(baseUrl);
 const ip = `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
+const clientHeaders = local ? { "cf-connecting-ip": ip } : {};
 
 const created = await fetch(`${baseUrl}/api/lists`, {
   method: "POST",
-  headers: { "content-type": "application/json", "cf-connecting-ip": ip },
+  headers: { "content-type": "application/json", ...clientHeaders },
   body: JSON.stringify(payload),
 });
 if (!created.ok) {
@@ -439,18 +443,31 @@ try {
 
   console.log("\npreview card");
   const card = await fetch(`${baseUrl}/og/${list.id}.png`);
-  check("preview card renders", card.status === 200 && card.headers.get("content-type") === "image/png");
+  check(
+    "preview card renders",
+    card.status === 200 && card.headers.get("content-type") === "image/png",
+    `${card.status} ${card.headers.get("content-type")}`,
+  );
 
   check("no page errors", consoleErrors.length === 0, consoleErrors.join("; "));
 } finally {
   await browser.close();
   if (!keep) {
-    const deleted = await fetch(`${baseUrl}/api/lists/${list.id}`, {
-      method: "DELETE",
-      headers: { "x-edit-token": list.editToken },
-    });
-    const after = await fetch(list.url);
-    check("verification list removed", deleted.ok && after.status === 404);
+    let deleted;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      deleted = await fetch(`${baseUrl}/api/lists/${list.id}`, {
+        method: "DELETE",
+        headers: { "x-edit-token": list.editToken },
+      });
+      if (deleted.ok) break;
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
+    const after = await fetch(`${list.url}?deleted=${Date.now()}`);
+    check(
+      "verification list removed",
+      deleted.ok && after.status === 404,
+      `delete ${deleted.status}, page ${after.status}`,
+    );
   } else {
     console.log(`kept verification list: ${list.url}`);
   }

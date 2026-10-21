@@ -37,7 +37,7 @@
 
 - [x] 6.1 Add `scripts/verify-showcase.mjs` driving Chrome against a running instance through default, brief, toggle, search, filters, copy, and theme flows, and verify it exits 0
 - [x] 6.2 Verify the no-JS case in the same script with JavaScript disabled: all mods visible, interactive controls absent, mode link still usable
-- [ ] 6.3 Run the checks against the live 135-mod reference list after deployment and verify the page, brief URL, and preview card all work
+- [x] 6\.3 Run the checks against the live 135-mod reference list after deployment and verify the page, brief URL, and preview card all work
 
 ## 7. Documentation
 

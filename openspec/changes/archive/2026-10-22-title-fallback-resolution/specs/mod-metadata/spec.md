@@ -33,6 +33,8 @@ The fallback SHALL consider only index entries that carry no package identifier,
 - **WHEN** a list item carries a recorded Workshop identifier
 - **THEN** the title fallback is not consulted
 
+### Requirement: Preserve stored index values across imports
+
 An index import SHALL NOT replace a stored package identifier or other stored index field with an empty value from the incoming dataset, so mappings learned or curated earlier survive dataset refreshes.
 
 #### Scenario: Refresh keeps a known identifier
