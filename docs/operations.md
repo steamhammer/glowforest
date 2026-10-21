@@ -11,8 +11,8 @@ pins the pnpm version, and only `pnpm-lock.yaml` is committed.
 
 | Resource | Value |
 |---|---|
-| Worker | `rimworld-modlist-showcase` |
-| URL | `https://rimworld-modlist-showcase.ihatenoise.workers.dev` |
+| Worker | `glowforest` |
+| URL | `https://glowforest.ihatenoise.workers.dev` |
 | D1 database | `modlist` (`8c5ba496-870f-427b-b320-2b0e0c67372b`) |
 | R2 bucket | `modlist-previews` |
 
@@ -54,6 +54,21 @@ The import is idempotent: rows are upserted by Workshop ID, so it can be re-run
 at any time (for example when the dataset is refreshed upstream) without
 duplicating entries or touching live lists. Progress and failures are printed;
 a failed batch is retried in halves before being reported.
+
+An import never erases stored values: a row that arrives without a package ID,
+name, authors, or game versions leaves the stored value in place. That makes a
+single-row import a supported way to curate a mapping the dataset lacks:
+
+```sh
+curl -X POST "$BASE_URL/__admin/import-index" \
+  -H "authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
+  -d '{"rows":[{"wid":"3480725900","packageId":"crows.dustbunny"}]}'
+```
+
+Mods whose entry has no package ID are also resolved automatically by exact
+title match, but only when the match is unambiguous (or when exactly one
+same-titled entry supports the list's game version). Ambiguous titles stay
+unresolved; use a curated row to settle those.
 
 ## Rollback
 

@@ -226,14 +226,17 @@ export function createApp(dependencies: AppDependencies = {}) {
     if (loaded === null) return html(renderNotFound(), 404, { "x-robots-tag": "noindex, nofollow" });
 
     const { list, items } = loaded;
-    const origin = new URL(request.url).origin;
+    const requestUrl = new URL(request.url);
+    const origin = requestUrl.origin;
     if (slug !== list.slug) {
-      return Response.redirect(`${origin}/l/${list.id}/${list.slug}`, 301);
+      return Response.redirect(`${origin}/l/${list.id}/${list.slug}${requestUrl.search}`, 301);
     }
 
+    const mode = requestUrl.searchParams.get("mode") === "brief" ? "brief" : "detailed";
     const page = renderListPage({
       list,
       items,
+      mode,
       canonicalUrl: `${origin}/l/${list.id}/${list.slug}`,
       ogImageUrl: `${origin}/og/${list.id}.png?v=${list.updatedAt}`,
     });

@@ -15,6 +15,7 @@ function parseVersions(raw: unknown): string[] {
 function toMeta(row: Row): ModMeta {
   return {
     wid: String(row.wid),
+    creator: row.creator === null || row.creator === undefined ? null : String(row.creator),
     title: row.title === null ? null : String(row.title),
     authors: row.authors === null ? null : String(row.authors),
     thumb: row.thumb === null ? null : String(row.thumb),
@@ -62,9 +63,10 @@ export async function upsertMeta(db: D1Database, rows: ModMeta[]): Promise<void>
       chunk.map((row) =>
         db
           .prepare(
-            `INSERT INTO mod_meta (wid, title, authors, thumb, description, file_size, subs, game_versions, updated_at, fetched_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO mod_meta (wid, creator, title, authors, thumb, description, file_size, subs, game_versions, updated_at, fetched_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(wid) DO UPDATE SET
+               creator = COALESCE(excluded.creator, mod_meta.creator),
                title = excluded.title,
                authors = excluded.authors,
                thumb = excluded.thumb,
@@ -77,6 +79,7 @@ export async function upsertMeta(db: D1Database, rows: ModMeta[]): Promise<void>
           )
           .bind(
             row.wid,
+            row.creator,
             row.title,
             row.authors,
             row.thumb,
@@ -126,6 +129,61 @@ export async function findIndexRows(
   return byPackage;
 }
 
+/**
+ * Index entries that carry no package identifier, grouped by lowercased,
+ * trimmed title. Only these can stand in for a package id the index lacks.
+ */
+export async function findIndexRowsByName(
+  db: D1Database,
+  names: string[],
+): Promise<Map<string, WorkshopIndexRow[]>> {
+  const byName = new Map<string, WorkshopIndexRow[]>();
+  for (const chunk of chunks([...new Set(names.map((name) => name.trim().toLowerCase()))], 90)) {
+    const placeholders = chunk.map(() => "?").join(",");
+    const { results } = await db
+      .prepare(
+        `SELECT * FROM workshop_mods
+         WHERE package_id IS NULL AND lower(trim(name)) IN (${placeholders})`,
+      )
+      .bind(...chunk)
+      .all<Row>();
+    for (const row of results ?? []) {
+      const entry = toIndexRow(row);
+      if (entry.name === null) continue;
+      const key = entry.name.trim().toLowerCase();
+      const list = byName.get(key) ?? [];
+      list.push(entry);
+      byName.set(key, list);
+    }
+  }
+  return byName;
+}
+
+/** Already-resolved Workshop ids published under each package-id namespace. */
+export async function findNamespaceSiblings(
+  db: D1Database,
+  namespaces: string[],
+  limitPerNamespace = 6,
+): Promise<Map<string, string[]>> {
+  const byNamespace = new Map<string, string[]>();
+  for (const namespace of [...new Set(namespaces)]) {
+    const { results } = await db
+      .prepare(
+        `SELECT wid FROM workshop_mods
+         WHERE package_id IS NOT NULL AND package_id LIKE ?
+         ORDER BY wid
+         LIMIT ?`,
+      )
+      .bind(`${namespace}.%`, limitPerNamespace)
+      .all<{ wid: unknown }>();
+    byNamespace.set(
+      namespace,
+      (results ?? []).map((row) => String(row.wid)),
+    );
+  }
+  return byNamespace;
+}
+
 export interface IndexImportRow {
   wid: string;
   packageId: string | null;
@@ -149,10 +207,13 @@ export async function importIndexRows(
             `INSERT INTO workshop_mods (wid, package_id, name, authors, game_versions, imported_at)
              VALUES (?, ?, ?, ?, ?, ?)
              ON CONFLICT(wid) DO UPDATE SET
-               package_id = excluded.package_id,
-               name = excluded.name,
-               authors = excluded.authors,
-               game_versions = excluded.game_versions,
+               package_id = COALESCE(excluded.package_id, workshop_mods.package_id),
+               name = COALESCE(excluded.name, workshop_mods.name),
+               authors = COALESCE(excluded.authors, workshop_mods.authors),
+               game_versions = CASE
+                 WHEN excluded.game_versions = '[]' THEN workshop_mods.game_versions
+                 ELSE excluded.game_versions
+               END,
                imported_at = excluded.imported_at`,
           )
           .bind(

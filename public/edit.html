@@ -5,11 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Edit mod list</title>
+<script>try{var t=localStorage.getItem("glowforest-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="site-header">
-  <a class="wordmark" href="/">RimWorld mod list</a>
+  <a class="wordmark" href="/">Glowforest</a>
+  <div class="theme-control js-only" role="group" aria-label="Colour theme">
+    <button type="button" class="chip" data-theme-choice="auto" aria-pressed="true">Auto</button>
+    <button type="button" class="chip" data-theme-choice="light" aria-pressed="false">Light</button>
+    <button type="button" class="chip" data-theme-choice="dark" aria-pressed="false">Dark</button>
+  </div>
 </header>
 
 <main class="page">
@@ -40,6 +46,7 @@
   <p>Mod metadata from Steam Workshop. Unofficial; RimWorld is a trademark of Ludeon Studios.</p>
 </footer>
 
+<script type="module" src="/theme.js"></script>
 <script type="module" src="/edit.js"></script>
 </body>
 </html>

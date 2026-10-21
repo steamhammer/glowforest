@@ -51,6 +51,7 @@ export interface WorkshopIndexRow {
 
 export interface ModMeta {
   wid: string;
+  creator: string | null;
   title: string | null;
   authors: string | null;
   thumb: string | null;

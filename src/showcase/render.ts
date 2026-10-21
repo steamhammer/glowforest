@@ -1,7 +1,10 @@
 import type { EnrichedItem } from "../metadata/enrich";
 import type { ListRecord } from "../types";
+import { workshopUrl as workshopItemUrl } from "../metadata/official";
 import { majorMinor } from "../metadata/resolve";
 import { formatBytes, formatDate, summarise, supportStatus } from "./stats";
+
+export type ListMode = "detailed" | "brief";
 
 export function escapeHtml(value: string): string {
   return value
@@ -12,11 +15,27 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** Same normalisation the client uses, so the haystack and the query agree. */
+export function normalizeForSearch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+const HAYSTACK_LIMIT = 240;
+
+export function searchHaystack(item: EnrichedItem): string {
+  const raw = [item.title, item.authors ?? "", item.packageId ?? "", item.note ?? ""].join(" ");
+  return normalizeForSearch(raw).slice(0, HAYSTACK_LIMIT);
+}
+
 export interface RenderOptions {
   list: ListRecord;
   items: EnrichedItem[];
   canonicalUrl: string;
   ogImageUrl: string;
+  mode?: ListMode;
 }
 
 function versionLabel(versions: string[]): string | null {
@@ -29,9 +48,64 @@ function versionLabel(versions: string[]): string | null {
   return sorted.slice(0, 3).join(", ");
 }
 
-function renderItem(item: EnrichedItem, listVersion: string | null): string {
+function cardAttributes(item: EnrichedItem, listVersion: string | null): string {
+  const status = supportStatus(item, listVersion);
+  return [
+    `data-position="${item.position + 1}"`,
+    `data-title="${escapeHtml(item.title)}"`,
+    `data-author="${escapeHtml(item.authors ?? "")}"`,
+    `data-official="${item.official ? 1 : 0}"`,
+    `data-unresolved="${item.unresolved ? 1 : 0}"`,
+    `data-outdated="${status === "unsupported" ? 1 : 0}"`,
+    `data-noted="${item.note ? 1 : 0}"`,
+    `data-search="${escapeHtml(searchHaystack(item))}"`,
+  ].join(" ");
+}
+
+const THEME_SCRIPT = `<script>try{var t=localStorage.getItem("glowforest-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>`;
+
+function renderThemeControl(): string {
+  return `<div class="theme-control js-only" role="group" aria-label="Colour theme">
+    <button type="button" class="chip" data-theme-choice="auto" aria-pressed="true">Auto</button>
+    <button type="button" class="chip" data-theme-choice="light" aria-pressed="false">Light</button>
+    <button type="button" class="chip" data-theme-choice="dark" aria-pressed="false">Dark</button>
+  </div>`;
+}
+
+const UNRESOLVED_TIP =
+  "Not found on Workshop: this mod's package ID is missing from the community index, so there is no Steam link for it.";
+
+function renderUnresolvedFlag(item: EnrichedItem): string {
+  if (!item.unresolved) return "";
+  const id = `tip-${item.position + 1}`;
+  const ambiguous = item.alternatives.length > 0;
+  const reason = ambiguous
+    ? `${item.alternatives.length} Workshop items share this title, so the page cannot tell which one this list uses. Open them and judge by the supported versions:`
+    : UNRESOLVED_TIP;
+  const links = ambiguous
+    ? `<span class="row-tip-links">${item.alternatives
+        .map((alternative) => {
+          const versions = versionLabel(alternative.gameVersions);
+          const label = `${alternative.name ?? `Workshop ${alternative.wid}`}${versions ? ` (${versions})` : ""}`;
+          return `<a href="${escapeHtml(workshopItemUrl(alternative.wid))}" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+        })
+        .join("")}</span>`
+    : "";
+  return `<span class="row-flag" tabindex="0" aria-describedby="${id}" aria-label="Unresolved mod"><span class="nf" aria-hidden="true">&#xF1522;</span><span class="row-tip" id="${id}" role="tooltip"><span class="row-tip-text">${escapeHtml(reason)}</span>${links}</span></span>`;
+}
+
+function renderHeader(): string {
+  return `<header class="site-header">
+  <a class="wordmark" href="/">Glowforest</a>
+  ${renderThemeControl()}
+</header>`;
+}
+
+function renderCard(item: EnrichedItem, listVersion: string | null): string {
   const status = supportStatus(item, listVersion);
   const shortVersion = majorMinor(listVersion) ?? listVersion ?? "this version";
+  const position = item.position + 1;
+
   const badges: string[] = [];
   if (item.official) badges.push(`<span class="badge badge-official">Official content</span>`);
   if (item.unresolved) badges.push(`<span class="badge badge-unresolved">Not found on Workshop</span>`);
@@ -59,21 +133,68 @@ function renderItem(item: EnrichedItem, listVersion: string | null): string {
     ? `<code class="package-id">${escapeHtml(item.packageId)}</code>`
     : "";
 
-  return `<li class="mod${item.unresolved ? " mod-unresolved" : ""}${item.official ? " mod-official" : ""}" id="mod-${item.position + 1}">
+  const target = item.storeUrl ?? item.workshopUrl;
+  const rowLink = target
+    ? `<a class="row-link" href="${escapeHtml(target)}" rel="noopener noreferrer">${item.storeUrl ? "Store" : "Workshop"}</a>`
+    : `<span class="row-link row-link-none" aria-hidden="true">—</span>`;
+
+  return `<li class="mod${item.unresolved ? " mod-unresolved" : ""}${item.official ? " mod-official" : ""}" id="mod-${position}" ${cardAttributes(item, listVersion)}>
+  <span class="mod-position" aria-label="Load order">${position}</span>
   ${thumb}
   <div class="mod-body">
-    <h2 class="mod-title">${escapeHtml(item.title)}</h2>
-    <p class="byline">${item.authors ? escapeHtml(item.authors) : "Unknown author"} ${badges.join(" ")}</p>
+    <div class="mod-headline">
+      <h2 class="mod-title">${escapeHtml(item.title)}</h2>
+      ${renderUnresolvedFlag(item)}
+    </div>
+    <p class="byline">${escapeHtml(item.authors ?? "Unknown author")} ${badges.join(" ")}</p>
     ${identity}
     ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
     ${facts.length > 0 ? `<p class="facts">${facts.join(" · ")}</p>` : ""}
-    ${link}
+    <p class="mod-actions">${link}</p>
   </div>
+  ${rowLink}
 </li>`;
+}
+
+interface ToolbarOptions {
+  summary: string;
+  mode: ListMode;
+}
+
+function renderToolbar(options: ToolbarOptions): string {
+  const otherMode: ListMode = options.mode === "brief" ? "detailed" : "brief";
+  const otherLabel = options.mode === "brief" ? "Detailed view" : "Brief view";
+  const briefPressed = options.mode === "brief" ? "true" : "false";
+
+  return `<div class="toolbar" id="toolbar">
+  <div class="toolbar-row">
+    <p class="summary">${escapeHtml(options.summary)}</p>
+    <p class="match-count" id="match-count" aria-live="polite" hidden></p>
+  </div>
+  <div class="toolbar-row toolbar-controls js-only" role="group" aria-label="Search and filters">
+    <label class="search">
+      <span class="sr-only">Search mods by name, author, package ID, or note</span>
+      <input type="search" id="mod-search" placeholder="Search mods, authors, notes…" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="filters" role="group" aria-label="Filter mods">
+      <button type="button" class="chip" data-filter="only-unresolved" aria-pressed="false">Unresolved</button>
+      <button type="button" class="chip" data-filter="only-outdated" aria-pressed="false">Outdated</button>
+      <button type="button" class="chip" data-filter="only-noted" aria-pressed="false">Noted</button>
+      <button type="button" class="chip chip-clear" data-clear hidden>Clear</button>
+    </div>
+  </div>
+  <div class="toolbar-row toolbar-utility">
+    <button type="button" class="chip js-only" id="copy-list">Copy list</button>
+    <button type="button" class="chip js-only" data-mode-toggle aria-pressed="${briefPressed}">Brief</button>
+    <a class="chip no-js-only" href="?mode=${otherMode}">${otherLabel}</a>
+    <a class="chip top-link" href="#top">Top</a>
+  </div>
+</div>`;
 }
 
 export function renderListPage(options: RenderOptions): string {
   const { list, items, canonicalUrl, ogImageUrl } = options;
+  const mode: ListMode = options.mode === "brief" ? "brief" : "detailed";
   const visible = items.filter((item) => !item.hidden);
   const stats = summarise(items, list.gameVersion);
   const size = stats.totalBytes > 0 ? formatBytes(stats.totalBytes) : null;
@@ -89,6 +210,31 @@ export function renderListPage(options: RenderOptions): string {
       ? `<p class="warning">${stats.unsupported} ${stats.unsupported === 1 ? "mod does" : "mods do"} not list support for ${escapeHtml(shortVersion)}.</p>`
       : "";
 
+  const official = visible.filter((item) => item.official);
+
+  // The official group sits where the first official mod appears, so the visible
+  // sequence still reads in ascending load order.
+  const cards: string[] = [];
+  let officialInserted = false;
+  for (const item of visible) {
+    if (item.official) {
+      if (!officialInserted) {
+        officialInserted = true;
+        const groupLabel = `Official content (${official.length} ${official.length === 1 ? "mod" : "mods"})`;
+        cards.push(`<li class="official-group" data-official-group="true" data-position="${official[0].position + 1}">
+  <details>
+    <summary>${groupLabel}</summary>
+    <ul class="mods mods-official">
+${official.map((entry) => renderCard(entry, list.gameVersion)).join("\n")}
+    </ul>
+  </details>
+</li>`);
+      }
+      continue;
+    }
+    cards.push(renderCard(item, list.gameVersion));
+  }
+
   const description = `${summary} — a RimWorld mod list in load order.`;
 
   return `<!doctype html>
@@ -96,9 +242,11 @@ export function renderListPage(options: RenderOptions): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${THEME_SCRIPT}
 <title>${escapeHtml(list.title)} — RimWorld mod list</title>
 <meta name="description" content="${escapeHtml(description)}">
 <meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark light">
 <meta property="og:type" content="website">
 <meta property="og:title" content="${escapeHtml(list.title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
@@ -110,22 +258,24 @@ export function renderListPage(options: RenderOptions): string {
 <meta name="twitter:image" content="${escapeHtml(ogImageUrl)}">
 <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-<header class="site-header">
-  <a class="wordmark" href="/">RimWorld mod list</a>
-</header>
-<main class="page">
+<body id="top">
+${renderHeader()}
+<main class="page" data-mode="${mode}">
   <h1>${escapeHtml(list.title)}</h1>
-  <p class="summary">${escapeHtml(summary)}</p>
+  ${renderToolbar({ summary, mode })}
   ${drift}
-  <ol class="mods">
-${visible.map((item) => renderItem(item, list.gameVersion)).join("\n")}
-  </ol>
+  <div class="brief-head" aria-hidden="true"><span>Order</span><span>Mod</span><span>Workshop</span></div>
+  <ul class="mods" id="mod-list">
+${cards.join("\n")}
+  </ul>
+  <p class="list-empty" id="list-empty" hidden>No mods match these filters.</p>
 </main>
 <footer class="site-footer">
   <p>Mod metadata from <a href="https://steamcommunity.com/app/294100/workshop/" rel="noopener noreferrer">Steam Workshop</a>. Community package index from the RimSort Steam Workshop Database. RimWorld is a trademark of Ludeon Studios; this site is unofficial.</p>
   <p>Load order is shown as recorded; it is not validated for missing dependencies or conflicts.</p>
 </footer>
+<script type="module" src="/theme.js"></script>
+<script type="module" src="/list.js"></script>
 </body>
 </html>`;
 }
@@ -133,14 +283,15 @@ ${visible.map((item) => renderItem(item, list.gameVersion)).join("\n")}
 export function renderNotFound(): string {
   return `<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>List not found</title><link rel="stylesheet" href="/styles.css"></head>
-<body>
-<header class="site-header"><a class="wordmark" href="/">RimWorld mod list</a></header>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${THEME_SCRIPT}<meta name="robots" content="noindex, nofollow"><title>List not found</title><link rel="stylesheet" href="/styles.css"></head>
+<body id="top">
+${renderHeader()}
 <main class="page">
   <h1>List not found</h1>
   <p>This mod list does not exist, or it has been deleted.</p>
   <p><a href="/">Share your own mod list</a></p>
 </main>
+<script type="module" src="/theme.js"></script>
 </body>
 </html>`;
 }

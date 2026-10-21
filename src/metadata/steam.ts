@@ -1,5 +1,6 @@
 export interface SteamDetails {
   wid: string;
+  creator: string | null;
   title: string | null;
   thumb: string | null;
   description: string | null;
@@ -98,6 +99,7 @@ export function createSteamClient(options: SteamClientOptions): SteamClient {
           if (!wid) continue;
           details.push({
             wid,
+            creator: item.creator === undefined || item.creator === null ? null : String(item.creator),
             title: typeof item.title === "string" ? item.title : null,
             thumb: typeof item.preview_url === "string" ? item.preview_url : null,
             description: typeof item.description === "string" ? item.description : null,

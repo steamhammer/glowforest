@@ -8,6 +8,21 @@ const token = process.env.ADMIN_TOKEN ?? "";
 const payload = JSON.parse(await readFile(file, "utf8"));
 const database = payload.database ?? {};
 
+/**
+ * The dataset records supported versions as `gameVersions` for inspected mods and
+ * as `tags` for scraped ones; accept either so a name-only entry still knows
+ * which game versions it supports.
+ */
+function versionsOf(entry) {
+  if (Array.isArray(entry.gameVersions) && entry.gameVersions.length > 0) {
+    return entry.gameVersions.filter((value) => typeof value === "string");
+  }
+  if (!Array.isArray(entry.tags)) return [];
+  return entry.tags
+    .map((tag) => (tag && typeof tag === "object" ? tag.tag : tag))
+    .filter((value) => typeof value === "string" && /^\d+\.\d+$/.test(value));
+}
+
 const rows = [];
 for (const [wid, entry] of Object.entries(database)) {
   if (!entry || typeof entry !== "object") continue;
@@ -18,7 +33,7 @@ for (const [wid, entry] of Object.entries(database)) {
     packageId: entry.packageId ? String(entry.packageId).toLowerCase() : null,
     name: entry.name ?? entry.steamName ?? null,
     authors: entry.authors ?? null,
-    gameVersions: Array.isArray(entry.gameVersions) ? entry.gameVersions : [],
+    gameVersions: versionsOf(entry),
   });
 }
 

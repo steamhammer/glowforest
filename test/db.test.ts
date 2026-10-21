@@ -84,6 +84,7 @@ describe("metadata repository", () => {
     await upsertMeta(env.DB, [
       {
         wid: "2009463077",
+        creator: null,
         title: "Harmony",
         authors: "Andreas Pardeike",
         thumb: "https://example.test/harmony.png",
@@ -107,6 +108,7 @@ describe("metadata repository", () => {
     await upsertMeta(env.DB, [
       {
         wid: "1",
+        creator: null,
         title: "Fresh",
         authors: null,
         thumb: null,
@@ -119,6 +121,7 @@ describe("metadata repository", () => {
       },
       {
         wid: "2",
+        creator: null,
         title: "Stale",
         authors: null,
         thumb: null,

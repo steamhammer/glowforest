@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { importIndexRows, countIndexRows } from "../src/db/meta";
 import { env } from "cloudflare:test";
-import { isPlaceholder, majorMinor, pickCandidate } from "../src/metadata/resolve";
+import { isPlaceholder, majorMinor, packageNamespace, pickByCreator, pickByTitle, pickCandidate } from "../src/metadata/resolve";
 import type { WorkshopIndexRow } from "../src/types";
 
 function row(wid: string, packageId: string, name: string, gameVersions: string[]): WorkshopIndexRow {
@@ -20,6 +20,77 @@ describe("identifier resolution", () => {
     expect(isPlaceholder("missing.packageid")).toBe(true);
     expect(isPlaceholder("brrainz.harmony")).toBe(false);
     expect(isPlaceholder(null)).toBe(false);
+  });
+
+  it("accepts a single title candidate", () => {
+    const chosen = pickByTitle([row("3480725900", "", "Dust Bunnies", ["1.5", "1.6"])], "1.5.4243");
+    expect(chosen?.wid).toBe("3480725900");
+  });
+
+  it("separates same-titled items by game version", () => {
+    const chosen = pickByTitle(
+      [
+        row("2659958183", "", "Dust Bunnies", ["1.1", "1.2", "1.3"]),
+        row("3480725900", "", "Dust Bunnies", ["1.5", "1.6"]),
+      ],
+      "1.5.4243 rev947",
+    );
+    expect(chosen?.wid).toBe("3480725900");
+  });
+
+  it("refuses a title match that stays ambiguous", () => {
+    const chosen = pickByTitle(
+      [
+        row("1", "", "Wall Light", ["1.6"]),
+        row("2", "", "Wall Light", ["1.6"]),
+      ],
+      "1.6.4297",
+    );
+    expect(chosen).toBeNull();
+    expect(pickByTitle([], "1.6.4297")).toBeNull();
+  });
+
+  it("needs a game version to break a title tie", () => {
+    const chosen = pickByTitle(
+      [row("1", "", "Wall Light", ["1.6"]), row("2", "", "Wall Light", ["1.5"])],
+      null,
+    );
+    expect(chosen).toBeNull();
+  });
+
+  it("extracts the package-id namespace", () => {
+    expect(packageNamespace("crows.dustbunny")).toBe("crows");
+    expect(packageNamespace("Crows.DustBunny")).toBe("crows");
+    expect(packageNamespace("brrainz.harmony")).toBe("brrainz");
+    expect(packageNamespace("singleword")).toBeNull();
+    expect(packageNamespace(".leading")).toBeNull();
+    expect(packageNamespace("trailing.")).toBeNull();
+    expect(packageNamespace(null)).toBeNull();
+  });
+
+  it("accepts the only candidate owned by the namespace's author", () => {
+    const creators: Record<string, string> = {
+      "1": "author-a",
+      "2": "author-a",
+      "3": "author-b",
+    };
+    expect(pickByCreator(["2", "3"], ["1"], (wid) => creators[wid] ?? null)).toBe("2");
+  });
+
+  it("declines when several candidates share the namespace's authors", () => {
+    const creators: Record<string, string> = {
+      "1": "author-a",
+      "2": "author-a",
+      "3": "author-b",
+      "4": "author-b",
+    };
+    expect(pickByCreator(["2", "4"], ["1", "3"], (wid) => creators[wid] ?? null)).toBeNull();
+  });
+
+  it("declines without namespace evidence or creators", () => {
+    expect(pickByCreator(["2", "3"], [], () => "author-a")).toBeNull();
+    expect(pickByCreator(["2", "3"], ["1"], () => null)).toBeNull();
+    expect(pickByCreator([], ["1"], () => "author-a")).toBeNull();
   });
 
   it("prefers a candidate that supports the list's game version", () => {
@@ -65,6 +136,44 @@ describe("community index import", () => {
 
     expect(first).toBe(2);
     expect(second).toBe(2);
+  });
+
+  it("keeps stored values when a refresh omits them", async () => {
+    await env.DB.prepare("DELETE FROM workshop_mods").run();
+    await importIndexRows(
+      env.DB,
+      [{ wid: "3480725900", packageId: "crows.dustbunny", name: "Dust Bunnies", authors: "Crow", gameVersions: ["1.5"] }],
+      1000,
+    );
+    await importIndexRows(
+      env.DB,
+      [{ wid: "3480725900", packageId: null, name: null, authors: null, gameVersions: [] }],
+      2000,
+    );
+    const stored = await env.DB.prepare("SELECT * FROM workshop_mods WHERE wid = '3480725900'").first<Record<string, unknown>>();
+    expect(stored?.package_id).toBe("crows.dustbunny");
+    expect(stored?.name).toBe("Dust Bunnies");
+    expect(stored?.authors).toBe("Crow");
+    expect(stored?.game_versions).toBe('["1.5"]');
+    expect(stored?.imported_at).toBe(2000);
+  });
+
+  it("accepts a curated package identifier for an entry that lacked one", async () => {
+    await env.DB.prepare("DELETE FROM workshop_mods").run();
+    await importIndexRows(
+      env.DB,
+      [{ wid: "3480725900", packageId: null, name: "Dust Bunnies", authors: null, gameVersions: ["1.5", "1.6"] }],
+      1000,
+    );
+    await importIndexRows(
+      env.DB,
+      [{ wid: "3480725900", packageId: "crows.dustbunny", name: null, authors: null, gameVersions: [] }],
+      2000,
+    );
+    const stored = await env.DB.prepare("SELECT * FROM workshop_mods WHERE wid = '3480725900'").first<Record<string, unknown>>();
+    expect(stored?.package_id).toBe("crows.dustbunny");
+    expect(stored?.name).toBe("Dust Bunnies");
+    expect(stored?.game_versions).toBe('["1.5","1.6"]');
   });
 });
 

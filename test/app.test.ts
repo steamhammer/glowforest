@@ -214,6 +214,7 @@ describe("showcase page", () => {
     await upsertMeta(env.DB, [
       {
         wid: "2009463077",
+        creator: null,
         title: "Harmony",
         authors: "Andreas Pardeike",
         thumb: "https://images.example/harmony.png",
@@ -226,6 +227,7 @@ describe("showcase page", () => {
       },
       {
         wid: "555",
+        creator: null,
         title: "Old Mod",
         authors: "Legacy Author",
         thumb: null,
@@ -280,11 +282,15 @@ describe("showcase page", () => {
     expect(html).toContain("RimSort Steam Workshop Database");
   });
 
-  it("renders without any script tag", async () => {
+  it("renders its full content without relying on a script", async () => {
     await seeded();
     const html = await (await request("/l/showcase/showcase")).text();
-    expect(html).not.toContain("<script");
+    // Every mod is server-rendered and visible by default; interactive controls
+    // are progressive enhancements marked js-only.
     expect(html).toContain("Harmony");
+    expect(html).toContain("Local Only");
+    expect(html).toContain("js-only");
+    expect(html).not.toContain('<li class="mod mod-unresolved" id="mod-4" hidden');
   });
 
   it("returns not found for unknown lists", async () => {
