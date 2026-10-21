@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "rimworld-modlist-showcase",
+  "name": "glowforest",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-01",
   "assets": {
@@ -10,15 +10,15 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "modlist",
-      "database_id": "8c5ba496-870f-427b-b320-2b0e0c67372b",
+      "database_name": "glowforest",
+      "database_id": "9916ba6f-b470-4fab-b5bc-63dacb11c61e",
       "migrations_dir": "migrations"
     }
   ],
   "r2_buckets": [
     {
       "binding": "PREVIEWS",
-      "bucket_name": "modlist-previews"
+      "bucket_name": "glowforest-previews"
     }
   ],
   "vars": {
