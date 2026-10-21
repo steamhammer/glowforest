@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<savegame>
+	<meta>
+		<gameVersion>1.0.2059</gameVersion>
+	</meta>
+	<game>
+		<filler>a pre-package-id save</filler>
+	</game>
+</savegame>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<savedModList>
+	<meta>
+		<gameVersion>1.7.4976 rev1043</gameVersion>
+		<modIds>
+			<li>brrainz.harmony</li>
+			<li>ludeon.rimworld</li>
+			<li>vanillaexpanded.vfecore</li>
+			<li>vanillaexpanded.vfearchitect</li>
+		</modIds>
+		<modSteamIds>
+			<li>2009463077</li>
+			<li>0</li>
+			<li>2023507013</li>
+			<li>2023507013</li>
+		</modSteamIds>
+		<modNames>
+			<li>Harmony</li>
+			<li>Core</li>
+			<li>Vanilla Expanded Framework</li>
+			<li>Vanilla Furniture Expanded - Architect</li>
+		</modNames>
+	</meta>
+	<modList>
+		<ids>
+			<li>brrainz.harmony</li>
+			<li>ludeon.rimworld</li>
+			<li>vanillaexpanded.vfecore</li>
+			<li>vanillaexpanded.vfearchitect</li>
+		</ids>
+		<names>
+			<li>Harmony</li>
+			<li>Core</li>
+			<li>Vanilla Expanded Framework</li>
+			<li>Vanilla Furniture Expanded - Architect</li>
+		</names>
+	</modList>
+</savedModList>

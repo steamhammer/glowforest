@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rimworld-modlist-showcase",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "modlist",
+      "database_id": "8c5ba496-870f-427b-b320-2b0e0c67372b",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PREVIEWS",
+      "bucket_name": "modlist-previews"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "production",
+    "META_FRESHNESS_SECONDS": "604800",
+    "STEAM_TIMEOUT_MS": "5000"
+  },
+  "rules": [
+    {
+      "type": "CompiledWasm",
+      "globs": ["**/*.wasm"],
+      "fallthrough": true
+    }
+  ]
+}

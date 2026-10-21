@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share your RimWorld mod list</title>
+<meta name="description" content="Turn a RimWorld save or mod list into a shareable page. Your colony never leaves your device.">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="wordmark" href="/">RimWorld mod list</a>
+</header>
+
+<main class="page">
+  <h1>Share your RimWorld mod list</h1>
+  <p class="lede">Drop a save file and get a page listing every mod, in load order, with Steam details. Only the mod-list header is read: the colony itself never leaves your device.</p>
+
+  <section class="panel" id="create-panel">
+    <label class="dropzone" id="dropzone" for="file-input">
+      <input id="file-input" type="file" accept=".rws,.rml,.xml,.gz,application/xml,text/xml" hidden>
+      <span class="dropzone-title">Drop your newest save here</span>
+      <span class="dropzone-sub">or click to choose a file</span>
+      <span class="dropzone-hint">Also accepts a <code>.rml</code> mod-list export or <code>ModsConfig.xml</code></span>
+    </label>
+
+    <p class="secondary-path">Prefer the game's own export? In RimWorld open <strong>Options → Mods</strong> and use <strong>Save mod list</strong>, then drop the <code>.rml</code> file here.</p>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <form id="publish-form" class="publish-form" hidden>
+      <div class="field">
+        <label for="title-input">List title</label>
+        <input id="title-input" name="title" type="text" maxlength="120" autocomplete="off">
+      </div>
+      <div class="detected" id="detected"></div>
+      <button class="primary" type="submit" id="publish-button">Publish list</button>
+    </form>
+  </section>
+
+  <section class="panel" id="result-panel" hidden>
+    <h2>Published</h2>
+    <p>Your page is live. Anyone with the link can view it; it is not listed or indexed.</p>
+    <div class="field">
+      <label for="share-url">Share URL</label>
+      <div class="copy-row"><input id="share-url" type="text" readonly><button type="button" data-copy="share-url">Copy</button></div>
+    </div>
+    <div class="field">
+      <label for="edit-url">Edit link — save this now</label>
+      <div class="copy-row"><input id="edit-url" type="text" readonly><button type="button" data-copy="edit-url">Copy</button></div>
+      <p class="hint">This link contains your edit secret. It is shown once and cannot be recovered.</p>
+    </div>
+    <p><a id="view-link" href="#">Open your list</a></p>
+  </section>
+
+  <section class="panel">
+    <h2>Other sources</h2>
+    <form id="collection-form" class="inline-form">
+      <div class="field grow">
+        <label for="collection-url">Steam Workshop collection URL</label>
+        <input id="collection-url" type="url" placeholder="https://steamcommunity.com/sharedfiles/filedetails/?id=..." autocomplete="off">
+      </div>
+      <button type="submit">Use collection</button>
+    </form>
+
+    <details class="paths">
+      <summary>Where are these files?</summary>
+      <div class="path-grid">
+        <div>
+          <h3>Windows</h3>
+          <code class="path" data-path="%USERPROFILE%\AppData\LocalLow\Ludeon Studios\RimWorld by Ludeon Studios\Saves">%USERPROFILE%\AppData\LocalLow\Ludeon Studios\RimWorld by Ludeon Studios\Saves</code>
+          <button type="button" class="copy-path">Copy</button>
+        </div>
+        <div>
+          <h3>macOS</h3>
+          <code class="path" data-path="~/Library/Application Support/RimWorld/Saves">~/Library/Application Support/RimWorld/Saves</code>
+          <button type="button" class="copy-path">Copy</button>
+        </div>
+        <div>
+          <h3>Linux</h3>
+          <code class="path" data-path="~/.config/unity3d/Ludeon Studios/RimWorld by Ludeon Studios/Saves">~/.config/unity3d/Ludeon Studios/RimWorld by Ludeon Studios/Saves</code>
+          <button type="button" class="copy-path">Copy</button>
+        </div>
+      </div>
+      <p class="hint"><code>ModsConfig.xml</code> sits in the <code>Config</code> folder next to <code>Saves</code>; game exports sit in <code>ModLists</code>.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>Mod metadata from <a href="https://steamcommunity.com/app/294100/workshop/" rel="noopener noreferrer">Steam Workshop</a>. Community package index from the RimSort Steam Workshop Database. Unofficial; RimWorld is a trademark of Ludeon Studios.</p>
+</footer>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

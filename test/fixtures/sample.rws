@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<savegame>
+	<meta>
+		<gameVersion>1.7.4976 rev1043</gameVersion>
+		<modIds>
+			<li>brrainz.harmony</li>
+			<li>ludeon.rimworld</li>
+			<li>ludeon.rimworld.royalty</li>
+			<li>Mlie.SomeMod_Steam</li>
+			<li>local.onlymod</li>
+		</modIds>
+		<modSteamIds>
+			<li>2009463077</li>
+			<li>0</li>
+			<li>1149640</li>
+			<li>730936602</li>
+			<li>0</li>
+		</modSteamIds>
+		<modNames>
+			<li>Harmony</li>
+			<li>Core</li>
+			<li>Royalty</li>
+			<li>Some Mod &amp; Friends</li>
+			<li>Local Only</li>
+		</modNames>
+	</meta>
+	<game>
+		<filler>this body is never read by the extractor</filler>
+	</game>
+</savegame>
