@@ -1,6 +1,6 @@
-# RimWorld mod list
+# Glowforest
 
-Turn a RimWorld save into a shareable page listing every mod, in load order, with Steam Workshop details.
+A shareable mod list for RimWorld. Turn a save into a page listing every mod, in load order, with Steam Workshop details.
 
 - Drop a `.rws` save, a `.rml` mod-list export, or `ModsConfig.xml` — or paste a Workshop collection URL.
 - Extraction happens in your browser and reads only the mod-list header: the colony never leaves your device.
