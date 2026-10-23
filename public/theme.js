@@ -1,14 +1,19 @@
 /**
- * Site-wide colour theme control.
+ * Site-wide colour theme switch.
  *
  * Loaded on every page. The head snippet has already applied a stored choice
- * before first paint; this module only reflects and updates it.
+ * before first paint; this module reflects it on the checkbox and toggles it.
+ * With nothing stored the page follows the system preference and the switch
+ * mirrors that, without writing a choice.
  */
 
 const STORAGE_THEME = "glowforest-theme";
 
 // Shared marker: every interactive control is styled to appear only under `.js`.
 document.documentElement.classList.add("js");
+
+const switches = [...document.querySelectorAll("[data-theme-switch]")];
+const system = window.matchMedia("(prefers-color-scheme: dark)");
 
 function storedChoice() {
   try {
@@ -17,41 +22,42 @@ function storedChoice() {
   } catch {
     /* storage unavailable */
   }
-  return "auto";
+  return null;
 }
 
-const buttons = [...document.querySelectorAll("[data-theme-choice]")];
+function systemTheme() {
+  return system.matches ? "dark" : "light";
+}
 
-function mark(choice) {
-  for (const button of buttons) {
-    button.setAttribute("aria-pressed", button.dataset.themeChoice === choice ? "true" : "false");
+function activeTheme() {
+  return storedChoice() ?? systemTheme();
+}
+
+function paint(theme) {
+  for (const control of switches) {
+    control.checked = theme === "dark";
   }
 }
 
-function applyChoice(choice) {
-  if (choice === "light" || choice === "dark") {
-    document.documentElement.dataset.theme = choice;
-    try {
-      localStorage.setItem(STORAGE_THEME, choice);
-    } catch {
-      /* storage unavailable */
-    }
-  } else {
-    delete document.documentElement.dataset.theme;
-    try {
-      localStorage.removeItem(STORAGE_THEME);
-    } catch {
-      /* storage unavailable */
-    }
+function apply(theme) {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(STORAGE_THEME, theme);
+  } catch {
+    /* storage unavailable: the choice holds for this page only */
   }
+  paint(theme);
 }
 
-mark(storedChoice());
+paint(activeTheme());
 
-for (const button of buttons) {
-  button.addEventListener("click", () => {
-    const choice = button.dataset.themeChoice;
-    applyChoice(choice);
-    mark(choice);
+for (const control of switches) {
+  control.addEventListener("change", () => {
+    apply(control.checked ? "dark" : "light");
   });
 }
+
+// Follow the system while no explicit choice exists.
+system.addEventListener("change", () => {
+  if (storedChoice() === null) paint(systemTheme());
+});

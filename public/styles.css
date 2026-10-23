@@ -157,9 +157,92 @@ html.js .no-js-only { display: none !important; }
   border-bottom: 1px solid var(--line);
 }
 
-.site-header .chip {
-  padding: 4px 10px;
-  font-size: 0.8rem;
+/* Theme switch: fixed sun/moon palette, independent of the page theme. */
+
+.theme-switch {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.switch {
+  font-size: 17px;
+  position: relative;
+  display: inline-block;
+  width: 64px;
+  height: 34px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #73c0fc;
+  transition: background-color 0.4s;
+  border-radius: 30px;
+}
+
+.slider::before {
+  position: absolute;
+  content: "";
+  height: 30px;
+  width: 30px;
+  border-radius: 20px;
+  left: 2px;
+  bottom: 2px;
+  z-index: 2;
+  background-color: #e8e8e8;
+  transition: transform 0.4s;
+}
+
+.switch input:checked + .slider { background-color: #183153; }
+.switch input:checked + .slider::before { transform: translateX(30px); }
+.switch input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.sun svg {
+  position: absolute;
+  top: 6px;
+  left: 36px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  animation: rotate 15s linear infinite;
+}
+
+.moon svg {
+  fill: #73c0fc;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  animation: tilt 5s linear infinite;
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes tilt {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sun svg,
+  .moon svg { animation: none; }
+  .slider,
+  .slider::before { transition: none; }
 }
 
 .wordmark {
@@ -328,8 +411,6 @@ button.primary:disabled { opacity: 0.6; cursor: progress; }
 .chip-clear { border-style: dashed; }
 
 .toolbar-utility { justify-content: flex-end; }
-
-.theme-control { display: flex; gap: 4px; }
 
 .top-link { margin-left: auto; }
 

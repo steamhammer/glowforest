@@ -200,19 +200,32 @@ describe("toolbar", () => {
 });
 
 describe("theme control", () => {
-  it("sits in the site header and loads the shared theme script", () => {
+  it("sits in the site header as a two-position switch", () => {
     for (const html of [page(mixed), page(mixed, "brief")]) {
       const header = html.slice(html.indexOf('<header class="site-header">'), html.indexOf("</header>"));
-      expect(header).toContain('data-theme-choice="auto"');
-      expect(header).toContain('data-theme-choice="light"');
-      expect(header).toContain('data-theme-choice="dark"');
-      expect(html.slice(html.indexOf('<div class="toolbar"')).indexOf("data-theme-choice")).toBe(-1);
+      expect(header).toContain('role="switch"');
+      expect(header).toContain("data-theme-switch");
+      expect(header).toContain('type="checkbox"');
+      expect(header).toContain('aria-label="Dark theme"');
+      expect(header).toContain('class="slider"');
+      expect(header).toContain('class="sun"');
+      expect(header).toContain('class="moon"');
+      expect(header).not.toContain("aria-checked");
+      expect(html.slice(html.indexOf('<div class="toolbar"')).indexOf("data-theme-switch")).toBe(-1);
       expect(html).toContain('<script type="module" src="/theme.js"></script>');
     }
   });
 
+  it("no longer offers three theme buttons", () => {
+    for (const html of [page(mixed), renderNotFound()]) {
+      expect(html).not.toContain("data-theme-choice");
+      expect(html).not.toContain(">Auto</button>");
+    }
+  });
+
   it("carries the control on the not-found page too", () => {
-    expect(renderNotFound()).toContain('data-theme-choice="dark"');
+    expect(renderNotFound()).toContain("data-theme-switch");
+    expect(renderNotFound()).toContain('aria-label="Dark theme"');
     expect(renderNotFound()).toContain('<script type="module" src="/theme.js"></script>');
   });
 

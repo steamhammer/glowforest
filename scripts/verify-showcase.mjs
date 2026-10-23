@@ -322,34 +322,70 @@ try {
   check("toggle URL reopens brief", (await page.$eval("main.page", (el) => el.dataset.mode)) === "brief");
 
   console.log("\ntheme");
-  check("control lives in the site header", (await page.$$eval(".site-header [data-theme-choice]", (nodes) => nodes.length)) === 3);
-  check("toolbar carries no theme control", (await page.$$eval(".toolbar [data-theme-choice]", (nodes) => nodes.length)) === 0);
-  await page.click('[data-theme-choice="light"]');
+  const switchSelector = ".site-header [data-theme-switch]";
+  const sliderSelector = ".site-header .switch .slider";
+  const checked = () => page.$eval(switchSelector, (el) => el.checked);
+  check("control lives in the site header", (await page.$$eval(switchSelector, (nodes) => nodes.length)) === 1);
+  check("toolbar carries no theme control", (await page.$$eval(".toolbar [data-theme-switch]", (nodes) => nodes.length)) === 0);
+  check("switch exposes a switch role", (await page.$eval(switchSelector, (el) => el.getAttribute("role"))) === "switch");
+  check(
+    "switch carries sun and moon artwork",
+    (await page.$$eval(".site-header .theme-switch svg", (nodes) => nodes.length)) === 2 &&
+      (await page.$$eval(".site-header .theme-switch svg", (nodes) => nodes.every((n) => n.getBoundingClientRect().width > 4))),
+  );
+
+  await page.evaluate(() => localStorage.removeItem("glowforest-theme"));
+  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "dark" }]);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mod");
+  check("no choice is stored yet", (await page.evaluate(() => localStorage.getItem("glowforest-theme"))) === null);
+  check("switch follows the system preference", (await checked()) === true);
+  check(
+    "system palette applies without an attribute",
+    (await page.$eval("html", (el) => el.dataset.theme ?? "")) === "",
+  );
+  const systemDarkBg = await page.$eval("body", (el) => getComputedStyle(el).backgroundColor);
+
+  await page.click(sliderSelector);
+  check("toggle stores the choice", (await page.evaluate(() => localStorage.getItem("glowforest-theme"))) === "light");
   check("light attribute applied", (await page.$eval("html", (el) => el.dataset.theme)) === "light");
+  check("switch shows the light position", (await checked()) === false);
   const lightBg = await page.$eval("body", (el) => getComputedStyle(el).backgroundColor);
+  check("light palette differs from the system dark one", lightBg !== systemDarkBg, `${lightBg} vs ${systemDarkBg}`);
+
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector(".mod");
   check("choice persists across reload", (await page.$eval("html", (el) => el.dataset.theme)) === "light");
-  await page.click('[data-theme-choice="dark"]');
+  check("switch position persists", (await checked()) === false);
+
+  await page.focus(switchSelector);
+  check(
+    "hidden input takes focus",
+    await page.evaluate(() => document.activeElement?.hasAttribute("data-theme-switch") === true),
+  );
+  await page.keyboard.press("Space");
+  check("Space toggles the switch", (await checked()) === true);
   const darkBg = await page.$eval("body", (el) => getComputedStyle(el).backgroundColor);
   check("dark palette differs from light", lightBg !== darkBg, `${lightBg} vs ${darkBg}`);
-  await page.click('[data-theme-choice="auto"]');
-  check("auto clears the attribute", (await page.$eval("html", (el) => el.dataset.theme ?? "")) === "");
-  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
-  const autoLight = await page.$eval("body", (el) => getComputedStyle(el).backgroundColor);
-  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "dark" }]);
-  const autoDark = await page.$eval("body", (el) => getComputedStyle(el).backgroundColor);
-  check("auto follows the system preference", autoLight !== autoDark, `${autoLight} vs ${autoDark}`);
-  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "dark" }]);
+  check("keyboard choice is stored", (await page.evaluate(() => localStorage.getItem("glowforest-theme"))) === "dark");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".mod");
+  check("keyboard choice persists", (await checked()) === true);
+
+  for (const [label, path] of [["home", "/"], ["edit", "/edit.html"], ["missing", "/l/no-such-list"]]) {
+    const html = await (await fetch(`${baseUrl}${path}`)).text();
+    check(`${label} page carries the switch`, html.includes("data-theme-switch"));
+  }
 
   console.log("\ntheme on a page without a list");
+  await page.evaluate(() => localStorage.removeItem("glowforest-theme"));
   await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
-  check("home page offers the control", (await page.$$eval(".site-header [data-theme-choice]", (nodes) => nodes.length)) === 3);
-  await page.click('[data-theme-choice="light"]');
-  check("light applied on the home page", (await page.$eval("html", (el) => el.dataset.theme)) === "light");
+  check("home page offers the switch", (await page.$$eval(switchSelector, (nodes) => nodes.length)) === 1);
+  await page.click(sliderSelector);
+  check("switch changes the theme on the home page", (await page.$eval("html", (el) => el.dataset.theme)) === "light");
   await page.reload({ waitUntil: "domcontentloaded" });
   check("choice persists on the home page", (await page.$eval("html", (el) => el.dataset.theme)) === "light");
-  await page.click('[data-theme-choice="auto"]');
+  await page.evaluate(() => localStorage.removeItem("glowforest-theme"));
 
   console.log("\nsearch and filters");
   await page.goto(`${list.url}?mode=brief`, { waitUntil: "domcontentloaded" });
@@ -433,8 +469,15 @@ try {
   await noJs.goto(list.url, { waitUntil: "domcontentloaded" });
   const noJsCards = await noJs.$$eval(".mod", (nodes) => nodes.length);
   check("all mods rendered without scripting", noJsCards === total, `${noJsCards} vs ${total}`);
+  await noJs.waitForSelector(".theme-switch", { hidden: true, timeout: 5000 }).catch(() => undefined);
+  check(
+    "theme switch hidden without scripting",
+    (await noJs.$eval(".theme-switch", (el) => el.offsetParent !== null)) === false,
+  );
+  await noJs.waitForSelector(".toolbar-controls", { hidden: true, timeout: 5000 }).catch(() => undefined);
   const searchVisible = await noJs.$eval(".toolbar-controls", (el) => el.offsetParent !== null);
   check("interactive controls hidden", searchVisible === false);
+  await noJs.waitForSelector(".no-js-only", { visible: true, timeout: 5000 }).catch(() => undefined);
   const modeLinkVisible = await noJs.$eval(".no-js-only", (el) => el.offsetParent !== null);
   check("mode link available", modeLinkVisible === true);
   await Promise.all([noJs.waitForNavigation({ waitUntil: "domcontentloaded" }), noJs.click(".no-js-only")]);
